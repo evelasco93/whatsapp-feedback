@@ -137,20 +137,52 @@ Decision de datos:
 - MongoDB se eligio por flexibilidad para iterar el esquema del mensaje y metadatos Twilio.
 - Idempotencia por `MessageSid` para evitar duplicados ante reintentos del proveedor.
 
-## 4) Enfoque de ingenieria de prompts para IA
+## 4) Enfoque de ingenieria de prompts para construir el sistema
 
-### Razonamiento de estructura del prompt
+Esta seccion documenta el estilo de prompts que use con el asistente de IA (GitHub Copilot) para llegar al sistema actual. No describe el prompt interno a Gemini, sino la forma de pedir, iterar y restringir las respuestas del asistente durante el desarrollo.
 
-Se usa una instruccion explicita: responder solo JSON con claves exactas (`sentimiento`, `tema`, `resumen`) y valores restringidos.
-Esto reduce ambiguedad, mejora consistencia y simplifica parsing/validacion aguas abajo.
+### Estructura general de mis prompts
 
-### Restricciones de esquema JSON
+- Contexto del proyecto primero: stack (FastAPI + React + Vite + Mongo Atlas + Twilio + Gemini), objetivo (dashboard de feedback en vivo) y restricciones (full-stack, deploy en Vercel + Render).
+- Objetivo concreto y unico por turno: "crear endpoint X", "agregar grafica Y", "arreglar bug Z". Sin mezclar tareas no relacionadas.
+- Resultado esperado explicito: archivos a tocar, contrato de respuesta, criterios visuales o de UX, o estado final del feature.
+- Restricciones tecnicas: TypeScript estricto, sin `any`, sin librerias extra cuando ya existe alternativa, mantener convenciones del repo, no romper builds.
+- Cuando aplica, ejemplos: payloads de Twilio, formas de respuesta de la API, ejemplos de copy en espanol.
 
-- `responseMimeType: "application/json"` para priorizar salida JSON en Gemini.
-- Validacion con `AIAnalysisResult` (Pydantic) y enums cerrados:
-  - `sentimiento`: `positivo | negativo | neutro`
-  - `tema`: `Servicio al Cliente | Calidad del Producto | Precio | Limpieza | Otro`
-- Cualquier salida fuera de contrato dispara error de validacion.
+### Tipos de prompts que use
+
+1. Prompts de scaffolding y arquitectura:
+   - Pedir estructura inicial del backend (FastAPI), separacion en `routers`, `repositories`, `services`, `schemas`, `dependencies`.
+   - Pedir estructura inicial del frontend (Vite + React + TS), con carpetas por feature (`features/dashboard`), componentes UI reutilizables y `services/queries`.
+2. Prompts de contrato de API:
+   - Definir endpoints (`/api/mensajes`, `/api/sentimientos`, `/api/temas`, `/api/stream`) con parametros, filtros y forma de respuesta antes de implementar la logica.
+   - Establecer modelos Pydantic con enums cerrados (`positivo | negativo | neutro`, lista fija de temas) para validar la salida de Gemini.
+3. Prompts de integracion externa:
+   - Webhook de Twilio: validacion de firma opcional, idempotencia por `MessageSid`, upsert en Mongo.
+   - Gemini: pedir respuesta solo JSON, `responseMimeType: "application/json"`, claves exactas (`sentimiento`, `tema`, `resumen`), enums cerrados y manejo de timeouts.
+4. Prompts de UI/UX iterativos:
+   - Indicaciones cortas y especificas: "el dropdown se ve como input de texto", "alinea colores entre pie chart y chips", "los porcentajes deberian ser pildoras clickeables que filtren el feed", "elimina resumen IA de las tarjetas".
+   - Cada iteracion incluye criterio visual claro y, cuando aplica, captura de referencia.
+5. Prompts de depuracion:
+   - Pegar stack trace completo (por ejemplo `TLSV1_ALERT_INTERNAL_ERROR` en Render) y describir contexto diferenciador (funciona en local + ngrok, falla en Render) para que el asistente proponga causa raiz y solucion concreta.
+6. Prompts de despliegue:
+   - Pedir pasos especificos para Vercel (frontend) y Render (backend) con variables de entorno y comandos de build/start.
+   - Pedir limpieza explicita cuando se descarto un enfoque (por ejemplo, eliminar `render.yaml` al optar por configuracion manual en el dashboard).
+
+### Instrucciones y detalles que siempre incluyo
+
+- Stack y versiones objetivo (Python 3.12, Node 20, React 18, pnpm).
+- Convenciones: nombres en espanol para dominio, ingles para codigo, sin emojis en UI.
+- Reglas de seguridad: nunca exponer secretos, usar variables de entorno, validar entrada en bordes.
+- Comportamiento esperado en errores: respuestas JSON con shape consistente, fallback a polling cuando SSE falla, validacion Pydantic estricta.
+- Criterios de aceptacion verificables: "que `pnpm build` pase", "que el endpoint responda 200 con esta forma", "que el chart conserve el orden entre polls".
+
+### Como iteramos
+
+- Cambios incrementales y verificables turno por turno; sin pedir refactors masivos.
+- Despues de cada cambio relevante: build y/o request real para validar.
+- Cuando el asistente proponia algo fuera de alcance, lo acotaba con un prompt corto ("solo toca este archivo", "no agregues librerias nuevas").
+- Para problemas de produccion, separaba diagnostico de solucion: primero identificar la causa, luego aplicar el fix minimo.
 
 ## 5) Flujo end-to-end: WhatsApp -> Dashboard
 
