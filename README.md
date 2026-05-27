@@ -152,12 +152,6 @@ Esto reduce ambiguedad, mejora consistencia y simplifica parsing/validacion agua
   - `tema`: `Servicio al Cliente | Calidad del Producto | Precio | Limpieza | Otro`
 - Cualquier salida fuera de contrato dispara error de validacion.
 
-### Resumen de validacion/reintento
-
-- Si no existe `OPENAI_API_KEY`, se devuelve analisis por defecto (`neutro`, `Otro`) para no bloquear el flujo.
-- Si OpenAI responde contenido invalido o hay excepcion, se marca error de analisis en el registro.
-- El webhook es idempotente por `MessageSid`, mitigando duplicados por reintentos externos.
-
 ## 5) Flujo end-to-end: WhatsApp -> Dashboard
 
 1. Usuario envia mensaje al sandbox de WhatsApp de Twilio.
