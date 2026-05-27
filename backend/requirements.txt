@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pymongo[srv]
+python-dotenv
+pydantic-settings
+twilio
+openai
+sse-starlette
+python-multipart
