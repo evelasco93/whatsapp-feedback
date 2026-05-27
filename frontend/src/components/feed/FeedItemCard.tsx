@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { Mensaje, Sentimiento } from "@app-types/api";
 import { formatRelativeTimeEs } from "@utils/time";
 import { Card } from "@components/ui/Card";
@@ -39,11 +40,29 @@ const chipVariantBySentimiento = (sentimiento: Mensaje["sentimiento"]) => {
   return "default";
 };
 
+const parseChannelAndNumber = (numeroRemitente: string) => {
+  const [rawChannel, rawNumber = ""] = numeroRemitente.split(":");
+  const channel = rawChannel
+    ? rawChannel.charAt(0).toUpperCase() + rawChannel.slice(1).toLowerCase()
+    : "Desconocido";
+
+  const parsed = parsePhoneNumberFromString(rawNumber || numeroRemitente);
+  const formattedNumber = parsed?.isValid()
+    ? parsed.formatInternational()
+    : rawNumber || numeroRemitente;
+
+  return { channel, formattedNumber };
+};
+
 export const FeedItemCard = ({
   mensaje,
   onSelectSentimiento,
   onSelectTema,
 }: FeedItemCardProps) => {
+  const { channel, formattedNumber } = parseChannelAndNumber(
+    mensaje.numero_remitente,
+  );
+
   return (
     <motion.div
       layout
@@ -68,6 +87,7 @@ export const FeedItemCard = ({
               <StatChip
                 label={mensaje.tema}
                 variant="tema"
+                toneKey={mensaje.tema}
                 onClick={() => onSelectTema(mensaje.tema!)}
               />
             ) : null}
@@ -77,9 +97,14 @@ export const FeedItemCard = ({
           </span>
         </div>
         <p className="feed-texto">{mensaje.texto_mensaje}</p>
-        {mensaje.resumen ? (
-          <p className="feed-resumen">Resumen IA: {mensaje.resumen}</p>
-        ) : null}
+        <p className="feed-origin">
+          <span>
+            Canal: <strong>{channel}</strong>
+          </span>
+          <span>
+            Numero: <strong>{formattedNumber}</strong>
+          </span>
+        </p>
       </Card>
     </motion.div>
   );

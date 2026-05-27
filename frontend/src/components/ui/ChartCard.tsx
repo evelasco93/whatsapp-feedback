@@ -24,11 +24,11 @@ export const ChartCard = ({
     >
       <Card className="chart-card">
         <header className="chart-card-header">
-          <div>
+          <div className="chart-card-title-block">
             <h3>{titulo}</h3>
             {descripcion ? <p>{descripcion}</p> : null}
           </div>
-          {action ? <div>{action}</div> : null}
+          {action ? <div className="chart-card-action">{action}</div> : null}
         </header>
         <div className="chart-card-body">{children}</div>
       </Card>

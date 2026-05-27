@@ -13,6 +13,12 @@
   --accent-2: #5f8152;
   --negative: #b65e4c;
   --neutral: #c58f57;
+  --sentiment-positive: #5f8152;
+  --sentiment-negative: #b65e4c;
+  --sentiment-neutral: #c58f57;
+  --theme-hue-base: 28;
+  --theme-saturation: 45;
+  --theme-lightness: 42;
   --shadow-soft: 0 18px 45px rgba(37, 22, 14, 0.08);
 }
 
@@ -89,6 +95,11 @@ h3,
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 1rem;
+  align-items: stretch;
+}
+
+.dashboard-grid > * {
+  height: 100%;
 }
 
 .dashboard-grid > :first-child {
@@ -108,15 +119,26 @@ h3,
 
 .chart-card {
   display: grid;
-  gap: 1rem;
+  grid-template-rows: auto 1fr;
+  gap: 0.9rem;
   padding: 1rem;
-  min-height: 360px;
+  min-height: 430px;
+  height: 100%;
 }
 
 .chart-card-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.chart-card-title-block {
+  max-width: 560px;
+}
+
+.chart-card-action {
+  width: 100%;
+  display: grid;
   align-items: flex-start;
 }
 
@@ -132,7 +154,8 @@ h3,
 }
 
 .chart-card-body {
-  min-height: 280px;
+  min-height: 0;
+  height: 100%;
 }
 
 .section-header {
@@ -155,6 +178,93 @@ h3,
 .feed-section {
   display: grid;
   gap: 0.85rem;
+}
+
+.summary-pills {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.summary-pill {
+  border: 1px solid #c9b9ad;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.8rem 0.95rem;
+  box-shadow: 0 8px 20px rgba(37, 22, 14, 0.05);
+  text-align: center;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.summary-pill:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 12px 24px rgba(37, 22, 14, 0.08);
+}
+
+.summary-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.summary-pill.is-active {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 12px 24px rgba(37, 22, 14, 0.1);
+}
+
+.summary-pill:disabled {
+  cursor: default;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: 0 8px 20px rgba(37, 22, 14, 0.05);
+  border-color: #c9b9ad;
+}
+
+.summary-pill-label {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5b5049;
+  font-weight: 700;
+}
+
+.summary-pill-value {
+  margin: 0.25rem 0 0;
+  font-family: "Hanken Grotesk", sans-serif;
+  font-size: 1.65rem;
+  line-height: 1.2;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.summary-pill-meta {
+  margin: 0.2rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.summary-pill-positivo .summary-pill-value {
+  color: var(--sentiment-positive);
+}
+
+.summary-pill-negativo .summary-pill-value {
+  color: var(--sentiment-negative);
+}
+
+.summary-pill-neutro .summary-pill-value {
+  color: var(--sentiment-neutral);
 }
 
 .feed-list {
@@ -204,6 +314,15 @@ h3,
   font-size: 0.9rem;
 }
 
+.feed-origin {
+  margin: 0.55rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
 .stat-chip {
   border: none;
   border-radius: 999px;
@@ -229,18 +348,18 @@ h3,
 }
 
 .chip-positivo {
-  background: rgba(95, 129, 82, 0.15);
-  color: #2d4a24;
+  background: color-mix(in srgb, var(--sentiment-positive) 22%, white);
+  color: color-mix(in srgb, var(--sentiment-positive) 70%, #12240d);
 }
 
 .chip-negativo {
-  background: rgba(182, 94, 76, 0.16);
-  color: #6d3023;
+  background: color-mix(in srgb, var(--sentiment-negative) 20%, white);
+  color: color-mix(in srgb, var(--sentiment-negative) 72%, #2a120d);
 }
 
 .chip-neutro {
-  background: rgba(197, 143, 87, 0.2);
-  color: #7a4f21;
+  background: color-mix(in srgb, var(--sentiment-neutral) 24%, white);
+  color: color-mix(in srgb, var(--sentiment-neutral) 74%, #3f2a12);
 }
 
 .chip-tema {
@@ -252,20 +371,32 @@ h3,
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  min-height: 2rem;
+}
+
+.active-filters:empty {
+  display: none;
 }
 
 .date-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(190px, 220px) minmax(150px, 170px) minmax(
+      150px,
+      170px
+    );
   gap: 0.5rem;
-  flex-wrap: wrap;
+  align-items: end;
 }
 
-.date-controls label {
+.date-control-field {
   display: grid;
   gap: 0.2rem;
   font-size: 0.8rem;
   color: var(--text-soft);
+}
+
+.date-control-field.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .date-controls input {
@@ -277,12 +408,52 @@ h3,
 }
 
 .date-controls select {
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid var(--line-soft);
   border-radius: 0.6rem;
-  padding: 0.45rem 0.5rem;
+  padding: 0.45rem 2rem 0.45rem 0.5rem;
   background: #fff;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6b5a4e 50%),
+    linear-gradient(135deg, #6b5a4e 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) calc(50% - 3px),
+    calc(100% - 9px) calc(50% - 3px);
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
   color: var(--text-main);
   min-width: 170px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.date-controls select:focus,
+.date-controls input:focus {
+  outline: none;
+  border-color: #a7866a;
+  box-shadow: 0 0 0 3px rgba(167, 134, 106, 0.2);
+}
+
+@media (max-width: 880px) {
+  .chart-card-action {
+    width: 100%;
+  }
+
+  .date-controls {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .date-control-field.is-hidden {
+    display: none;
+  }
+
+  .summary-pills {
+    grid-template-columns: 1fr;
+  }
 }
 
 .legend-row {
@@ -298,6 +469,15 @@ h3,
   gap: 0.4rem;
   color: var(--text-soft);
   font-size: 0.86rem;
+  user-select: none;
+  cursor: default;
+}
+
+.chart-wrap,
+.chart-wrap .recharts-text,
+.chart-wrap .recharts-cartesian-axis-tick-value {
+  user-select: none;
+  cursor: default;
 }
 
 .legend-dot {

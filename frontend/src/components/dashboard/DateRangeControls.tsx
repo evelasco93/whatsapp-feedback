@@ -23,9 +23,11 @@ export const DateRangeControls = ({
   onPeriodoChange,
   onRangeChange,
 }: DateRangeControlsProps) => {
+  const isCustomRange = periodo === "rango";
+
   return (
     <div className="date-controls">
-      <label>
+      <label className="date-control-field">
         Periodo
         <select
           value={periodo}
@@ -40,30 +42,32 @@ export const DateRangeControls = ({
           ))}
         </select>
       </label>
-      {periodo === "rango" ? (
-        <>
-          <label>
-            Desde
-            <input
-              type="date"
-              value={value.desde}
-              onChange={(event) =>
-                onRangeChange({ ...value, desde: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            Hasta
-            <input
-              type="date"
-              value={value.hasta}
-              onChange={(event) =>
-                onRangeChange({ ...value, hasta: event.target.value })
-              }
-            />
-          </label>
-        </>
-      ) : null}
+      <label
+        className={`date-control-field ${isCustomRange ? "" : "is-hidden"}`}
+      >
+        Desde
+        <input
+          type="date"
+          value={value.desde}
+          disabled={!isCustomRange}
+          onChange={(event) =>
+            onRangeChange({ ...value, desde: event.target.value })
+          }
+        />
+      </label>
+      <label
+        className={`date-control-field ${isCustomRange ? "" : "is-hidden"}`}
+      >
+        Hasta
+        <input
+          type="date"
+          value={value.hasta}
+          disabled={!isCustomRange}
+          onChange={(event) =>
+            onRangeChange({ ...value, hasta: event.target.value })
+          }
+        />
+      </label>
     </div>
   );
 };

@@ -123,6 +123,13 @@ const readInitialFilters = () => {
   };
 };
 
+const toPct = (value: number, total: number) => {
+  if (total <= 0) {
+    return 0;
+  }
+  return Math.round((value / total) * 100);
+};
+
 export const DashboardPage = () => {
   useLiveUpdates();
 
@@ -171,6 +178,35 @@ export const DashboardPage = () => {
 
   const hasError =
     mensajesQuery.isError || sentimientosQuery.isError || temasQuery.isError;
+
+  const resumenPildoras = useMemo(() => {
+    const sentimientoItems = sentimientosQuery.data?.items ?? [];
+    const temasItems = temasQuery.data?.items ?? [];
+
+    const totalSentimientos = sentimientoItems.reduce(
+      (acc, item) => acc + item.total,
+      0,
+    );
+    const totalTemas = temasItems.reduce((acc, item) => acc + item.total, 0);
+
+    const topTema = [...temasItems].sort((a, b) => {
+      if (b.total !== a.total) {
+        return b.total - a.total;
+      }
+      return a.valor.localeCompare(b.valor, "es");
+    })[0];
+
+    const getSentCount = (key: string) =>
+      sentimientoItems.find((item) => item.valor === key)?.total ?? 0;
+
+    return {
+      topTemaLabel: topTema?.valor ?? "Sin datos",
+      topTemaPct: toPct(topTema?.total ?? 0, totalTemas),
+      positivoPct: toPct(getSentCount("positivo"), totalSentimientos),
+      negativoPct: toPct(getSentCount("negativo"), totalSentimientos),
+      neutroPct: toPct(getSentCount("neutro"), totalSentimientos),
+    };
+  }, [sentimientosQuery.data?.items, temasQuery.data?.items]);
 
   return (
     <div className="page-shell">
@@ -229,6 +265,76 @@ export const DashboardPage = () => {
         </ChartCard>
       </section>
 
+      <section className="summary-pills" aria-label="Resumen de indicadores">
+        <button
+          type="button"
+          className={`summary-pill summary-pill-tema${
+            temaFilter && temaFilter === resumenPildoras.topTemaLabel
+              ? " is-active"
+              : ""
+          }`}
+          onClick={() => {
+            if (resumenPildoras.topTemaLabel === "Sin datos") {
+              return;
+            }
+            setTemaFilter((current) =>
+              current === resumenPildoras.topTemaLabel
+                ? undefined
+                : resumenPildoras.topTemaLabel,
+            );
+          }}
+          disabled={resumenPildoras.topTemaLabel === "Sin datos"}
+        >
+          <p className="summary-pill-label">Tema con mayor conteo</p>
+          <p className="summary-pill-value">{resumenPildoras.topTemaLabel}</p>
+          <p className="summary-pill-meta">
+            {resumenPildoras.topTemaPct}% del total
+          </p>
+        </button>
+        <button
+          type="button"
+          className={`summary-pill summary-pill-positivo${
+            sentimientoFilter === "positivo" ? " is-active" : ""
+          }`}
+          onClick={() =>
+            setSentimientoFilter((current) =>
+              current === "positivo" ? undefined : "positivo",
+            )
+          }
+        >
+          <p className="summary-pill-label">Positivos</p>
+          <p className="summary-pill-value">{resumenPildoras.positivoPct}%</p>
+        </button>
+        <button
+          type="button"
+          className={`summary-pill summary-pill-negativo${
+            sentimientoFilter === "negativo" ? " is-active" : ""
+          }`}
+          onClick={() =>
+            setSentimientoFilter((current) =>
+              current === "negativo" ? undefined : "negativo",
+            )
+          }
+        >
+          <p className="summary-pill-label">Negativos</p>
+          <p className="summary-pill-value">{resumenPildoras.negativoPct}%</p>
+        </button>
+        <button
+          type="button"
+          className={`summary-pill summary-pill-neutro${
+            sentimientoFilter === "neutro" ? " is-active" : ""
+          }`}
+          onClick={() =>
+            setSentimientoFilter((current) =>
+              current === "neutro" ? undefined : "neutro",
+            )
+          }
+        >
+          <p className="summary-pill-label">Neutros</p>
+          <p className="summary-pill-value">{resumenPildoras.neutroPct}%</p>
+        </button>
+      </section>
+
       <section className="feed-section">
         <SectionHeader
           titulo="Feed reciente"
@@ -261,6 +367,7 @@ export const DashboardPage = () => {
               label={`Tema: ${temaFilter}`}
               variant="tema"
               active
+              toneKey={temaFilter}
               onClick={() => setTemaFilter(undefined)}
             />
           ) : null}
