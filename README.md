@@ -12,7 +12,7 @@ Arquitectura final de demo:
 - Backend: FastAPI desplegado en Render.
 - Base de datos: MongoDB Atlas.
 - Ingreso de mensajes: Twilio WhatsApp Sandbox (webhook).
-- IA: OpenAI Chat Completions con salida JSON estricta.
+- IA: Gemini (Google Generative Language API) con salida JSON validada.
 - Tiempo real: SSE (`/api/stream`) + polling de respaldo.
 
 ## 2) Configuracion y ejecucion local (backend + frontend)
@@ -23,7 +23,7 @@ Arquitectura final de demo:
 - Node.js 20+
 - pnpm
 - Cuenta/configuracion de MongoDB Atlas
-- Credenciales de OpenAI
+- Credenciales de Gemini
 - (Opcional) Twilio Auth Token para validar firma
 
 ### Backend (FastAPI)
@@ -52,7 +52,7 @@ cp .env.example .env
 
 ```env
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>/<db>?retryWrites=true&w=majority
-OPENAI_API_KEY=<tu_openai_api_key>
+GEMINI_API_KEY=<tu_gemini_api_key>
 ```
 
 Variables importantes adicionales:
@@ -67,7 +67,8 @@ LOG_LEVEL=INFO
 CORS_ORIGINS_RAW=*
 MONGODB_DB_NAME=whatsapp_feedback
 MONGODB_COLLECTION_NAME=mensajes
-OPENAI_MODEL=gpt-4.1-mini
+GEMINI_MODEL=gemini-flash-latest
+AI_TIMEOUT_SECONDS=15
 
 VALIDATE_TWILIO_SIGNATURE=false
 TWILIO_AUTH_TOKEN=
@@ -122,7 +123,7 @@ Backend:
 - Pydantic + pydantic-settings: validacion fuerte de datos y configuracion por entorno.
 - PyMongo: acceso directo y claro a MongoDB Atlas.
 - twilio: manejo de webhook y validacion de firma.
-- openai: clasificacion semantica del mensaje.
+- Gemini API: clasificacion semantica del mensaje.
 - sse-starlette: stream SSE para actualizacion en vivo.
 
 Frontend:
@@ -146,7 +147,7 @@ Esto reduce ambiguedad, mejora consistencia y simplifica parsing/validacion agua
 
 ### Restricciones de esquema JSON
 
-- `response_format={"type":"json_object"}` para forzar salida JSON.
+- `responseMimeType: "application/json"` para priorizar salida JSON en Gemini.
 - Validacion con `AIAnalysisResult` (Pydantic) y enums cerrados:
   - `sentimiento`: `positivo | negativo | neutro`
   - `tema`: `Servicio al Cliente | Calidad del Producto | Precio | Limpieza | Otro`
@@ -245,8 +246,9 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 MONGODB_URI=...
 MONGODB_DB_NAME=whatsapp_feedback
 MONGODB_COLLECTION_NAME=mensajes
-OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4.1-mini
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-flash-latest
+AI_TIMEOUT_SECONDS=15
 CORS_ORIGINS_RAW=https://<tu-frontend>.vercel.app
 VALIDATE_TWILIO_SIGNATURE=true
 TWILIO_AUTH_TOKEN=...
@@ -287,5 +289,5 @@ https://<tu-backend>.onrender.com/webhook/twilio
 - Gestionar secretos solo por variables de entorno en cada plataforma.
 - Activar validacion de firma de Twilio en entornos publicos (`VALIDATE_TWILIO_SIGNATURE=true`).
 - Restringir CORS a dominios reales de frontend en produccion.
-- Rotar periodicamente claves (OpenAI, Twilio, MongoDB) y revocar credenciales antiguas.
+- Rotar periodicamente claves (Gemini, Twilio, MongoDB) y revocar credenciales antiguas.
 - Aplicar principio de menor privilegio en usuarios de base de datos y servicios.
