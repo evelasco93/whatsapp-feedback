@@ -1,4 +1,5 @@
 import time
+from threading import Lock
 from typing import Any
 
 from bson import ObjectId
@@ -9,12 +10,20 @@ from pymongo.collection import Collection
 class MessageRepository:
     def __init__(self, collection: Collection) -> None:
         self.collection = collection
+        self._indexes_ensured = False
+        self._indexes_lock = Lock()
 
     def ensure_indexes(self) -> None:
-        self.collection.create_index("twilio_message_sid", unique=True)
-        self.collection.create_index([("timestamp_epox", DESCENDING)])
-        self.collection.create_index([("sentimiento", ASCENDING)])
-        self.collection.create_index([("tema", ASCENDING)])
+        if self._indexes_ensured:
+            return
+        with self._indexes_lock:
+            if self._indexes_ensured:
+                return
+            self.collection.create_index("twilio_message_sid", unique=True)
+            self.collection.create_index([("timestamp_epox", DESCENDING)])
+            self.collection.create_index([("sentimiento", ASCENDING)])
+            self.collection.create_index([("tema", ASCENDING)])
+            self._indexes_ensured = True
 
     def upsert_base_message(
         self,
@@ -111,19 +120,30 @@ class MessageRepository:
             query["sentimiento"] = sentimiento
         if tema:
             query["tema"] = tema
-        if desde is not None or hasta is not None:
-            query["timestamp_epox"] = {}
-            if desde is not None:
-                query["timestamp_epox"]["$gte"] = desde
-            if hasta is not None:
-                query["timestamp_epox"]["$lte"] = hasta
+        timestamp_filter = self._build_timestamp_range_filter(desde=desde, hasta=hasta)
+        if timestamp_filter:
+            query["timestamp_epox"] = timestamp_filter
 
         docs = self.collection.find(query).sort("timestamp_epox", DESCENDING).limit(limit)
         return [self._normalize(doc) for doc in docs]
 
     def aggregate_counts(self, field_name: str) -> list[dict[str, Any]]:
+        return self.aggregate_counts_by_field(field_name=field_name, desde=None, hasta=None)
+
+    def aggregate_counts_by_field(
+        self,
+        *,
+        field_name: str,
+        desde: int | None,
+        hasta: int | None,
+    ) -> list[dict[str, Any]]:
+        match_conditions: dict[str, Any] = {field_name: {"$exists": True, "$ne": None}}
+        timestamp_filter = self._build_timestamp_range_filter(desde=desde, hasta=hasta)
+        if timestamp_filter:
+            match_conditions["timestamp_epox"] = timestamp_filter
+
         pipeline = [
-            {"$match": {field_name: {"$exists": True, "$ne": None}}},
+            {"$match": match_conditions},
             {"$group": {"_id": f"${field_name}", "total": {"$sum": 1}}},
             {"$sort": {"total": -1}},
         ]
@@ -152,3 +172,11 @@ class MessageRepository:
         elif object_id is not None:
             normalized["id"] = str(object_id)
         return normalized
+
+    def _build_timestamp_range_filter(self, *, desde: int | None, hasta: int | None) -> dict[str, int]:
+        timestamp_filter: dict[str, int] = {}
+        if desde is not None:
+            timestamp_filter["$gte"] = desde
+        if hasta is not None:
+            timestamp_filter["$lte"] = hasta
+        return timestamp_filter

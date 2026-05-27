@@ -5,5 +5,7 @@ python-dotenv
 pydantic-settings
 twilio
 openai
+httpx
 sse-starlette
 python-multipart
+certifi

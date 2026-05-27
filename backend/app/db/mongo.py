@@ -1,3 +1,4 @@
+import certifi
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -12,7 +13,7 @@ def get_mongo_client() -> MongoClient:
     global _client
     if _client is None:
         settings = get_settings()
-        _client = MongoClient(settings.mongodb_uri)
+        _client = MongoClient(settings.mongodb_uri, tlsCAFile=certifi.where())
     return _client
 
 

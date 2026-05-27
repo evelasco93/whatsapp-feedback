@@ -16,8 +16,9 @@ class Settings(BaseSettings):
     mongodb_db_name: str = Field("whatsapp_feedback", alias="MONGODB_DB_NAME")
     mongodb_collection_name: str = Field("mensajes", alias="MONGODB_COLLECTION_NAME")
 
-    openai_api_key: str = Field("", alias="OPENAI_API_KEY")
-    openai_model: str = Field("gpt-4.1-mini", alias="OPENAI_MODEL")
+    gemini_api_key: str = Field("", alias="GEMINI_API_KEY")
+    gemini_model: str = Field("gemini-flash-latest", alias="GEMINI_MODEL")
+    ai_timeout_seconds: float = Field(15.0, alias="AI_TIMEOUT_SECONDS")
 
     validate_twilio_signature: bool = Field(False, alias="VALIDATE_TWILIO_SIGNATURE")
     twilio_auth_token: str = Field("", alias="TWILIO_AUTH_TOKEN")

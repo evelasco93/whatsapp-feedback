@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, Query, Request
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 from sse_starlette.sse import EventSourceResponse
 
 from app.config.settings import Settings, get_settings
+from app.db.mongo import get_mongo_client
 from app.dependencies import get_message_repository, get_stream_service
 from app.repositories.messages_repository import MessageRepository
 from app.schemas.message import SentimientoEnum, TemaEnum
@@ -12,6 +15,7 @@ from app.services.stream_service import StreamService
 
 
 router = APIRouter(prefix="/api", tags=["api"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/mensajes")
@@ -34,14 +38,22 @@ def get_mensajes(
 
 
 @router.get("/sentimientos")
-def get_sentimientos(repository: MessageRepository = Depends(get_message_repository)) -> dict[str, object]:
-    data = repository.aggregate_counts("sentimiento")
+def get_sentimientos(
+    desde: int | None = Query(default=None),
+    hasta: int | None = Query(default=None),
+    repository: MessageRepository = Depends(get_message_repository),
+) -> dict[str, object]:
+    data = repository.aggregate_counts_by_field(field_name="sentimiento", desde=desde, hasta=hasta)
     return {"items": data}
 
 
 @router.get("/temas")
-def get_temas(repository: MessageRepository = Depends(get_message_repository)) -> dict[str, object]:
-    data = repository.aggregate_counts("tema")
+def get_temas(
+    desde: int | None = Query(default=None),
+    hasta: int | None = Query(default=None),
+    repository: MessageRepository = Depends(get_message_repository),
+) -> dict[str, object]:
+    data = repository.aggregate_counts_by_field(field_name="tema", desde=desde, hasta=hasta)
     return {"items": data}
 
 
@@ -55,8 +67,47 @@ def get_resumen(
 
 
 @router.get("/health")
-def get_health(repository: MessageRepository = Depends(get_message_repository)) -> dict[str, str]:
-    return {"status": "ok" if repository.health_check() else "degraded"}
+def get_health(settings: Settings = Depends(get_settings)) -> dict[str, object]:
+    client = get_mongo_client()
+    try:
+        ping_ok = client.admin.command("ping").get("ok") == 1.0
+        return {
+            "status": "ok" if ping_ok else "degraded",
+            "checks": {
+                "mongo": "ok" if ping_ok else "degraded",
+                "db": settings.mongodb_db_name,
+                "collection": settings.mongodb_collection_name,
+            },
+        }
+    except ServerSelectionTimeoutError:
+        logger.warning("MongoDB health check server selection timeout")
+        return {
+            "status": "degraded",
+            "checks": {
+                "mongo": "unreachable",
+                "db": settings.mongodb_db_name,
+                "collection": settings.mongodb_collection_name,
+            },
+            "error": {
+                "type": "ServerSelectionTimeoutError",
+                "message": "MongoDB server selection timed out",
+                "hint": "Verify MONGODB_URI, Atlas network access/IP allowlist, and Atlas user credentials",
+            },
+        }
+    except PyMongoError as exc:
+        logger.exception("MongoDB health check failed: %s", type(exc).__name__)
+        return {
+            "status": "degraded",
+            "checks": {
+                "mongo": "error",
+                "db": settings.mongodb_db_name,
+                "collection": settings.mongodb_collection_name,
+            },
+            "error": {
+                "type": type(exc).__name__,
+                "message": "MongoDB connectivity check failed",
+            },
+        }
 
 
 @router.get("/stream")

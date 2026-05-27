@@ -1,16 +1,16 @@
 # Backend (FastAPI)
 
-Backend service for WhatsApp feedback ingestion, AI analysis, MongoDB persistence, and SSE updates.
+Servicio backend para ingesta de feedback por WhatsApp, analisis con IA, persistencia en MongoDB y actualizaciones en vivo por SSE.
 
 ## Stack
 
 - FastAPI + Uvicorn
-- MongoDB Atlas via `pymongo[srv]`
-- Twilio WhatsApp Sandbox inbound webhook
-- OpenAI JSON analysis (`sentimiento`, `tema`, `resumen`)
-- SSE stream for live updates
+- MongoDB Atlas usando `pymongo[srv]`
+- Webhook entrante de Twilio WhatsApp Sandbox
+- Analisis JSON con Gemini (Google Generative Language API) (`sentimiento`, `tema`, `resumen`)
+- Stream SSE para actualizaciones en vivo
 
-## Folder Structure
+## Estructura de carpetas
 
 ```text
 backend/
@@ -31,9 +31,14 @@ backend/
 └── requirements.txt
 ```
 
-## Setup
+## Requisitos
 
-1. Create virtual environment and install dependencies:
+- Python 3.11+
+- MongoDB Atlas (o MongoDB compatible con el driver)
+
+## Configuracion y ejecucion
+
+1. Crear entorno virtual e instalar dependencias:
 
 ```bash
 cd backend
@@ -42,14 +47,20 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2. Configure environment:
+2. Configurar variables de entorno:
 
 ```bash
 cp .env.example .env
-# Edit .env with real secrets and MongoDB URI
 ```
 
-3. Run API locally:
+Variables clave para analisis IA:
+
+- `GEMINI_API_KEY`: API key de Google AI Studio / Generative Language API.
+- `GEMINI_MODEL`: modelo de Gemini a usar. Si no se define, el backend usa `gemini-flash-latest`.
+  - Si el usuario define `gemini-3.5-flash`, se utiliza ese valor.
+- `AI_TIMEOUT_SECONDS`: timeout de la llamada HTTP al proveedor IA.
+
+3. Iniciar API local:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -58,46 +69,53 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ## Endpoints
 
 - `POST /webhook/twilio`
-  - Receives Twilio form-data payload (`Body`, `From`, `MessageSid`)
-  - Idempotent by `MessageSid`
-  - Persists base record with `timestamp_epox` (epoch seconds)
-  - Triggers AI analysis and updates same record
-  - Returns TwiML-compatible response (`<Response></Response>`)
+  - Recibe payload `form-data` de Twilio (`Body`, `From`, `MessageSid`).
+  - Es idempotente por `MessageSid`.
+  - Persiste el registro base con `timestamp_epox` (epoch seconds).
+  - Dispara el analisis IA y actualiza el mismo registro.
+  - Retorna respuesta compatible con TwiML (`<Response></Response>`).
 
 - `GET /api/mensajes?sentimiento=&tema=&desde=&hasta=&limit=`
-  - Filters by `sentimiento`, `tema`, epoch range, and limit
+  - Filtra por `sentimiento`, `tema`, rango de fechas (`timestamp_epox`) y `limit`.
 
-- `GET /api/sentimientos`
-  - Aggregation count by sentimiento
+- `GET /api/sentimientos?desde=&hasta=`
+  - Retorna conteo agregado por sentimiento.
+  - `desde` y `hasta` son opcionales (epoch seconds) y aplican filtro por `timestamp_epox`.
 
-- `GET /api/temas`
-  - Aggregation count by tema
+- `GET /api/temas?desde=&hasta=`
+  - Retorna conteo agregado por tema.
+  - `desde` y `hasta` son opcionales (epoch seconds) y aplican filtro por `timestamp_epox`.
 
 - `GET /api/resumen?limit=`
-  - Latest analyzed summaries
+  - Retorna resumenes mas recientes ya analizados.
 
 - `GET /api/health`
-  - DB connectivity health (`ok`/`degraded`)
+  - Estado de conectividad a base de datos (`ok` / `degraded`).
 
 - `GET /api/stream`
-  - SSE stream for message create/update events
+  - Stream SSE de eventos de mensajes creados y actualizados.
 
-## Enum Contracts
+## Contratos de enums
 
 - `sentimiento`: `positivo | negativo | neutro`
 - `tema`: `Servicio al Cliente | Calidad del Producto | Precio | Limpieza | Otro`
 - `timestamp_epox`: epoch seconds
 
-## Twilio Signature Validation
+## Validacion de firma de Twilio
 
-Optional and env-controlled:
+Opcional y controlada por variables de entorno:
 
-- Set `VALIDATE_TWILIO_SIGNATURE=true`
-- Set `TWILIO_AUTH_TOKEN=<your_token>`
+- `VALIDATE_TWILIO_SIGNATURE=true`
+- `TWILIO_AUTH_TOKEN` definido en entorno (no incluir secretos en repositorio)
 
-## Smoke Examples (curl)
+## Nota Atlas SQL vs MongoDB Driver
 
-Webhook simulation:
+- Atlas SQL requiere una instancia federada (Federated Database Instance) y al menos una base de datos registrada para poder consultar.
+- El acceso por driver MongoDB (`pymongo`) funciona sin Atlas SQL y la base/coleccion puede crearse automaticamente en el primer write.
+
+## Ejemplos rapidos (curl)
+
+Simular webhook:
 
 ```bash
 curl -X POST "http://localhost:8000/webhook/twilio" \
@@ -107,13 +125,19 @@ curl -X POST "http://localhost:8000/webhook/twilio" \
   --data-urlencode "MessageSid=SM_TEST_123"
 ```
 
-Fetch messages:
+Listar mensajes:
 
 ```bash
 curl "http://localhost:8000/api/mensajes?limit=10"
 ```
 
-SSE stream:
+Obtener agregados de temas por rango:
+
+```bash
+curl "http://localhost:8000/api/temas?desde=1716400000&hasta=1717000000"
+```
+
+Consumir SSE:
 
 ```bash
 curl -N "http://localhost:8000/api/stream"
