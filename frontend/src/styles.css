@@ -425,10 +425,11 @@ h3,
   padding: 1.05rem 1.15rem;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.3rem;
-  align-items: start;
-  align-content: start;
-  justify-items: start;
+  gap: 0.4rem;
+  align-items: center;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
   min-height: 0;
 }
 
