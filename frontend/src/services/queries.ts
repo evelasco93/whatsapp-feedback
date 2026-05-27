@@ -4,7 +4,7 @@ import { apiClient } from "@services/apiClient";
 
 const REFRESH_INTERVAL_MS = 15000;
 
-export const queryKeys = {
+const queryKeys = {
   mensajes: (query: MensajesQuery) => ["mensajes", query] as const,
   sentimientos: (query: AggregateQuery) => ["sentimientos", query] as const,
   temas: (query: AggregateQuery) => ["temas", query] as const,

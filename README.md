@@ -172,7 +172,7 @@ Esta seccion documenta el estilo de prompts que use con el asistente de IA (GitH
 ### Instrucciones y detalles que siempre incluyo
 
 - Stack y versiones objetivo (Python 3.12, Node 20, React 18, pnpm).
-- Convenciones: nombres en espanol para dominio, ingles para codigo, sin emojis en UI.
+- Convenciones: nombres en español para dominio, ingles para codigo, sin emojis en UI.
 - Reglas de seguridad: nunca exponer secretos, usar variables de entorno, validar entrada en bordes.
 - Comportamiento esperado en errores: respuestas JSON con shape consistente, fallback a polling cuando SSE falla, validacion Pydantic estricta.
 - Criterios de aceptacion verificables: "que `pnpm build` pase", "que el endpoint responda 200 con esta forma", "que el chart conserve el orden entre polls".

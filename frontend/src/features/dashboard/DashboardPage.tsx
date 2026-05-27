@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Frown, Meh, Smile } from "lucide-react";
+import {
+  ArrowUp,
+  BadgeCheck,
+  Coffee,
+  Frown,
+  Meh,
+  Menu,
+  Smile,
+  UserCircle2,
+  X,
+} from "lucide-react";
 import { FeedItemCard } from "@components/feed/FeedItemCard";
 import { DateRangeControls } from "@components/dashboard/DateRangeControls";
 import { SentimentPieChart } from "@components/dashboard/SentimentPieChart";
 import { TopicBarChart } from "@components/dashboard/TopicBarChart";
-import { HowToUseDemo } from "@components/HowToUseDemo";
 import { ChartCard } from "@components/ui/ChartCard";
 import { SectionHeader } from "@components/ui/SectionHeader";
 import { StatChip } from "@components/ui/StatChip";
@@ -134,6 +143,14 @@ const toPct = (value: number, total: number) => {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
+type DashboardTab = "dashboard" | "analisis" | "ajustes";
+
+const TABS: { id: DashboardTab; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "analisis", label: "Analisis" },
+  { id: "ajustes", label: "Ajustes" },
+];
+
 export const DashboardPage = () => {
   useLiveUpdates();
 
@@ -147,6 +164,8 @@ export const DashboardPage = () => {
   );
   const [periodo, setPeriodo] = useState<PeriodoFiltro>(initialFilters.periodo);
   const [range, setRange] = useState<DateRange>(initialFilters.range);
+  const [activeTab, setActiveTab] = useState<DashboardTab>("dashboard");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const timeframeQuery = useMemo<AggregateQuery>(() => {
     return resolveTimeframeRange(periodo, range);
@@ -184,13 +203,7 @@ export const DashboardPage = () => {
     mensajesQuery.isError || sentimientosQuery.isError || temasQuery.isError;
 
   const resumenPildoras = useMemo(() => {
-    const sentimientoItems = sentimientosQuery.data?.items ?? [];
     const temasItems = temasQuery.data?.items ?? [];
-
-    const totalSentimientos = sentimientoItems.reduce(
-      (acc, item) => acc + item.total,
-      0,
-    );
     const totalTemas = temasItems.reduce((acc, item) => acc + item.total, 0);
 
     const topTema = [...temasItems].sort((a, b) => {
@@ -200,17 +213,11 @@ export const DashboardPage = () => {
       return a.valor.localeCompare(b.valor, "es");
     })[0];
 
-    const getSentCount = (key: string) =>
-      sentimientoItems.find((item) => item.valor === key)?.total ?? 0;
-
     return {
       topTemaLabel: topTema?.valor ?? "Sin datos",
       topTemaPct: toPct(topTema?.total ?? 0, totalTemas),
-      positivoPct: toPct(getSentCount("positivo"), totalSentimientos),
-      negativoPct: toPct(getSentCount("negativo"), totalSentimientos),
-      neutroPct: toPct(getSentCount("neutro"), totalSentimientos),
     };
-  }, [sentimientosQuery.data?.items, temasQuery.data?.items]);
+  }, [temasQuery.data?.items]);
 
   const sentimentMeter = useMemo(() => {
     const sentimientoItems = sentimientosQuery.data?.items ?? [];
@@ -264,227 +271,382 @@ export const DashboardPage = () => {
         : Smile;
 
   return (
-    <div className="page-shell">
-      <header className="hero">
-        <div className="hero-brand-row">
-          <div>
-            <p className="brand">Café de El Salvador</p>
-            <h1>FeedBean</h1>
-          </div>
-          <img className="hero-logo" src="/logo.png" alt="Logo FeedBean" />
+    <div className="app-shell">
+      <header className="top-nav">
+        <div className="top-nav-brand">
+          <img className="top-nav-logo" src="/logo.png" alt="Logo FeedBean" />
+          <strong>FeedBean</strong>
         </div>
+        <nav className="top-nav-tabs" aria-label="Navegacion principal">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={activeTab === tab.id ? "is-active" : ""}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+        <button type="button" className="top-nav-user" aria-label="Perfil">
+          <UserCircle2 size={28} />
+        </button>
+        <button
+          type="button"
+          className="top-nav-burger"
+          aria-label="Abrir menu"
+          aria-expanded={mobileNavOpen}
+          aria-controls="mobile-nav-drawer"
+          onClick={() => setMobileNavOpen(true)}
+        >
+          <Menu size={26} />
+        </button>
       </header>
 
-      {hasError ? (
-        <div className="state-error" role="alert">
-          Ocurrio un error cargando datos. Verifica que el backend este en
-          ejecucion.
-        </div>
-      ) : null}
-
-      <section className="sentiment-meter" aria-label="Pulso de sentimiento">
-        <div className="sentiment-meter-head">
-          <h2>Pulso de sentimiento</h2>
-        </div>
-        <div className="sentiment-meter-visual" role="presentation">
-          <div
-            className={`sentiment-meter-face-icon mood-${sentimentMeter.mood}`}
-            aria-hidden
-          >
-            <MoodIcon size={64} strokeWidth={2.2} />
-          </div>
-          <div
-            className="sentiment-meter-track"
-            aria-label={`Indicador de sentimiento en ${sentimentMeter.indicatorPct}%`}
-          />
-          <div
-            className={`sentiment-meter-arrow mood-${sentimentMeter.mood}`}
-            style={{ left: `${clamp(sentimentMeter.indicatorPct, 2, 98)}%` }}
-            aria-hidden
-          >
-            <ArrowUp size={20} strokeWidth={2.4} />
-          </div>
-        </div>
-        <div className="sentiment-meter-scale" aria-hidden>
-          <span>Negativo</span>
-          <span>Neutro</span>
-          <span>Positivo</span>
-        </div>
-      </section>
-
-      <section className="dashboard-grid">
-        <ChartCard
-          titulo="Distribucion de sentimientos"
-          descripcion="Resumen global de mensajes clasificados."
-        >
-          {sentimientosQuery.isLoading && !sentimientosQuery.data ? (
-            <div className="state-loading">Cargando sentimientos...</div>
-          ) : sentimientosQuery.data?.items.length ? (
-            <SentimentPieChart items={sentimientosQuery.data.items} />
-          ) : (
-            <div className="state-empty">Aun no hay datos de sentimientos.</div>
-          )}
-        </ChartCard>
-
-        <ChartCard
-          titulo="Frecuencia de temas por rango de fechas"
-          descripcion="Selecciona un periodo y revisa los temas mas mencionados."
-          action={
-            <DateRangeControls
-              periodo={periodo}
-              value={range}
-              onPeriodoChange={setPeriodo}
-              onRangeChange={setRange}
+      <AnimatePresence>
+        {mobileNavOpen ? (
+          <>
+            <motion.div
+              key="mobile-nav-overlay"
+              className="mobile-nav-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setMobileNavOpen(false)}
             />
-          }
-        >
-          {temasQuery.isLoading && !temasQuery.data ? (
-            <div className="state-loading">Cargando temas por rango...</div>
-          ) : temasQuery.data?.items.length ? (
-            <TopicBarChart items={temasQuery.data.items} />
-          ) : (
-            <div className="state-empty">
-              No hay temas para el rango seleccionado.
-            </div>
-          )}
-        </ChartCard>
-      </section>
-
-      <section className="summary-pills" aria-label="Resumen de indicadores">
-        <button
-          type="button"
-          className={`summary-pill summary-pill-tema${
-            temaFilter && temaFilter === resumenPildoras.topTemaLabel
-              ? " is-active"
-              : ""
-          }`}
-          onClick={() => {
-            if (resumenPildoras.topTemaLabel === "Sin datos") {
-              return;
-            }
-            setTemaFilter((current) =>
-              current === resumenPildoras.topTemaLabel
-                ? undefined
-                : resumenPildoras.topTemaLabel,
-            );
-          }}
-          disabled={resumenPildoras.topTemaLabel === "Sin datos"}
-        >
-          <p className="summary-pill-label">Tema con mayor conteo</p>
-          <p className="summary-pill-value">{resumenPildoras.topTemaLabel}</p>
-          <p className="summary-pill-meta">
-            {resumenPildoras.topTemaPct}% del total
-          </p>
-        </button>
-        <button
-          type="button"
-          className={`summary-pill summary-pill-positivo${
-            sentimientoFilter === "positivo" ? " is-active" : ""
-          }`}
-          onClick={() =>
-            setSentimientoFilter((current) =>
-              current === "positivo" ? undefined : "positivo",
-            )
-          }
-        >
-          <p className="summary-pill-label">Positivos</p>
-          <p className="summary-pill-value">{resumenPildoras.positivoPct}%</p>
-        </button>
-        <button
-          type="button"
-          className={`summary-pill summary-pill-negativo${
-            sentimientoFilter === "negativo" ? " is-active" : ""
-          }`}
-          onClick={() =>
-            setSentimientoFilter((current) =>
-              current === "negativo" ? undefined : "negativo",
-            )
-          }
-        >
-          <p className="summary-pill-label">Negativos</p>
-          <p className="summary-pill-value">{resumenPildoras.negativoPct}%</p>
-        </button>
-        <button
-          type="button"
-          className={`summary-pill summary-pill-neutro${
-            sentimientoFilter === "neutro" ? " is-active" : ""
-          }`}
-          onClick={() =>
-            setSentimientoFilter((current) =>
-              current === "neutro" ? undefined : "neutro",
-            )
-          }
-        >
-          <p className="summary-pill-label">Neutros</p>
-          <p className="summary-pill-value">{resumenPildoras.neutroPct}%</p>
-        </button>
-      </section>
-
-      <section className="feed-section">
-        <SectionHeader
-          titulo="Feed reciente"
-          subtitulo="Haz clic en los chips de sentimiento o tema para filtrar el feed."
-          accion={
-            <button
-              className="btn-secondary"
-              type="button"
-              onClick={() => {
-                setSentimientoFilter(undefined);
-                setTemaFilter(undefined);
-              }}
+            <motion.aside
+              key="mobile-nav-drawer"
+              id="mobile-nav-drawer"
+              className="mobile-nav-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navegacion"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              Limpiar filtros
-            </button>
-          }
-        />
-
-        <div className="active-filters">
-          {sentimientoFilter ? (
-            <StatChip
-              label={`Sentimiento: ${sentimientoFilter}`}
-              variant={sentimientoFilter}
-              active
-              onClick={() => setSentimientoFilter(undefined)}
-            />
-          ) : null}
-          {temaFilter ? (
-            <StatChip
-              label={`Tema: ${temaFilter}`}
-              variant="tema"
-              active
-              toneKey={temaFilter}
-              onClick={() => setTemaFilter(undefined)}
-            />
-          ) : null}
-        </div>
-
-        {mensajesQuery.isLoading && !mensajesQuery.data ? (
-          <div className="state-loading">Cargando mensajes...</div>
+              <div className="mobile-nav-header">
+                <div className="top-nav-brand">
+                  <img
+                    className="top-nav-logo"
+                    src="/logo.png"
+                    alt="Logo FeedBean"
+                  />
+                  <strong>FeedBean</strong>
+                </div>
+                <button
+                  type="button"
+                  className="mobile-nav-close"
+                  aria-label="Cerrar menu"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <X size={22} />
+                </button>
+              </div>
+              <nav className="mobile-nav-tabs" aria-label="Navegacion">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={activeTab === tab.id ? "is-active" : ""}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setMobileNavOpen(false);
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+              <button
+                type="button"
+                className="mobile-nav-profile"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                <UserCircle2 size={22} />
+                <span>Perfil</span>
+              </button>
+            </motion.aside>
+          </>
         ) : null}
+      </AnimatePresence>
 
-        {!mensajesQuery.isLoading && !mensajesQuery.data?.items.length ? (
-          <div className="state-empty">
-            No hay mensajes recientes para esos filtros.
+      <div className="page-shell">
+        {hasError ? (
+          <div className="state-error" role="alert">
+            Ocurrio un error cargando datos. Verifica que el backend este en
+            ejecucion.
           </div>
         ) : null}
 
-        <motion.div layout className="feed-list">
-          <AnimatePresence>
-            {mensajesQuery.data?.items.map((mensaje) => (
-              <FeedItemCard
-                key={mensaje.id}
-                mensaje={mensaje}
-                onSelectSentimiento={(sentimiento) =>
-                  setSentimientoFilter(sentimiento)
-                }
-                onSelectTema={(tema) => setTemaFilter(tema)}
-              />
-            ))}
-          </AnimatePresence>
-        </motion.div>
-      </section>
+        <AnimatePresence mode="wait" initial={false}>
+          {activeTab === "dashboard" ? (
+            <motion.div
+              key="tab-dashboard"
+              className="tab-panel"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <section className="hero-grid" aria-label="Pulso e insight">
+                <article className="sentiment-gauge card">
+                  <h2>Satisfacción</h2>
+                  <div className="sentiment-meter-visual" role="presentation">
+                    <div
+                      className={`sentiment-meter-face-icon mood-${sentimentMeter.mood}`}
+                      aria-hidden
+                    >
+                      <MoodIcon size={56} strokeWidth={2.1} />
+                    </div>
+                    <div className="sentiment-meter-track" aria-hidden />
+                    <div
+                      className={`sentiment-meter-arrow mood-${sentimentMeter.mood}`}
+                      style={{
+                        left: `${clamp(sentimentMeter.indicatorPct, 2, 98)}%`,
+                      }}
+                      aria-hidden
+                    >
+                      <ArrowUp size={20} strokeWidth={2.4} />
+                    </div>
+                  </div>
+                  <div className="sentiment-meter-scale" aria-hidden>
+                    <span>Negativo</span>
+                    <span>Neutro</span>
+                    <span>Positivo</span>
+                  </div>
+                </article>
 
-      <HowToUseDemo />
+                <article className="insight-card card">
+                  <p className="insight-kicker">Key Insight</p>
+                  <h3>{resumenPildoras.topTemaLabel}</h3>
+                  <div className="insight-icon" aria-hidden>
+                    <Coffee size={46} strokeWidth={2} />
+                    <BadgeCheck size={28} strokeWidth={2.2} />
+                  </div>
+                  <p className="insight-total">
+                    {resumenPildoras.topTemaPct}% del total
+                  </p>
+                </article>
+              </section>
+
+              <section className="dashboard-grid">
+                <ChartCard
+                  titulo="Distribucion de sentimientos"
+                  descripcion="Resumen global de mensajes clasificados."
+                >
+                  {sentimientosQuery.isLoading && !sentimientosQuery.data ? (
+                    <div className="state-loading">
+                      Cargando sentimientos...
+                    </div>
+                  ) : sentimientosQuery.data?.items.length ? (
+                    <SentimentPieChart
+                      items={sentimientosQuery.data.items}
+                      activeKey={sentimientoFilter}
+                      onSelect={(key) =>
+                        setSentimientoFilter((current) =>
+                          current === key ? undefined : key,
+                        )
+                      }
+                    />
+                  ) : (
+                    <div className="state-empty">
+                      Aun no hay datos de sentimientos.
+                    </div>
+                  )}
+                </ChartCard>
+
+                <ChartCard
+                  titulo="Frecuencia de temas por rango de fechas"
+                  descripcion="Selecciona un periodo y revisa los temas mas mencionados."
+                  action={
+                    <DateRangeControls
+                      periodo={periodo}
+                      value={range}
+                      onPeriodoChange={setPeriodo}
+                      onRangeChange={setRange}
+                    />
+                  }
+                >
+                  {temasQuery.isLoading && !temasQuery.data ? (
+                    <div className="state-loading">
+                      Cargando temas por rango...
+                    </div>
+                  ) : temasQuery.data?.items.length ? (
+                    <TopicBarChart
+                      items={temasQuery.data.items}
+                      activeValue={temaFilter}
+                      onSelect={(value) =>
+                        setTemaFilter((current) =>
+                          current === value ? undefined : value,
+                        )
+                      }
+                    />
+                  ) : (
+                    <div className="state-empty">
+                      No hay temas para el rango seleccionado.
+                    </div>
+                  )}
+                </ChartCard>
+              </section>
+
+              <section className="feed-section">
+                <SectionHeader
+                  titulo="Feed reciente"
+                  subtitulo="Haz clic en una porción del pastel, una barra o un chip para filtrar el feed."
+                  accion={
+                    <button
+                      className="btn-secondary"
+                      type="button"
+                      onClick={() => {
+                        setSentimientoFilter(undefined);
+                        setTemaFilter(undefined);
+                      }}
+                    >
+                      Limpiar filtros
+                    </button>
+                  }
+                />
+
+                <div className="active-filters">
+                  {sentimientoFilter ? (
+                    <StatChip
+                      label={`Sentimiento: ${sentimientoFilter}`}
+                      variant={sentimientoFilter}
+                      active
+                      onClick={() => setSentimientoFilter(undefined)}
+                    />
+                  ) : null}
+                  {temaFilter ? (
+                    <StatChip
+                      label={`Tema: ${temaFilter}`}
+                      variant="tema"
+                      active
+                      toneKey={temaFilter}
+                      onClick={() => setTemaFilter(undefined)}
+                    />
+                  ) : null}
+                </div>
+
+                {mensajesQuery.isLoading && !mensajesQuery.data ? (
+                  <div className="state-loading">Cargando mensajes...</div>
+                ) : null}
+
+                {!mensajesQuery.isLoading &&
+                !mensajesQuery.data?.items.length ? (
+                  <div className="state-empty">
+                    No hay mensajes recientes para esos filtros.
+                  </div>
+                ) : null}
+
+                <motion.div layout className="feed-list">
+                  <AnimatePresence>
+                    {mensajesQuery.data?.items.map((mensaje) => (
+                      <FeedItemCard
+                        key={mensaje.id}
+                        mensaje={mensaje}
+                        onSelectSentimiento={(sentimiento) =>
+                          setSentimientoFilter(sentimiento)
+                        }
+                        onSelectTema={(tema) => setTemaFilter(tema)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              </section>
+            </motion.div>
+          ) : null}
+
+          {activeTab === "analisis" ? (
+            <motion.section
+              key="tab-analisis"
+              className="analysis-section tab-panel"
+              aria-label="Panel de analisis"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <SectionHeader
+                titulo="Analisis IA"
+                subtitulo="Revision de sentimiento, tema y salida original por mensaje."
+              />
+
+              <div className="analysis-list">
+                {mensajesQuery.data?.items.map((mensaje) => (
+                  <article key={mensaje.id} className="analysis-item card">
+                    <p className="analysis-message">{mensaje.texto_mensaje}</p>
+                    <div className="analysis-fields">
+                      <span>
+                        Sentimiento:{" "}
+                        <strong>{mensaje.sentimiento ?? "Pendiente"}</strong>
+                      </span>
+                      <span>
+                        Tema: <strong>{mensaje.tema ?? "Pendiente"}</strong>
+                      </span>
+                      <span>
+                        Resumen:{" "}
+                        <strong>{mensaje.resumen ?? "Pendiente"}</strong>
+                      </span>
+                      <span>
+                        Estado: <strong>{mensaje.estado_analisis}</strong>
+                      </span>
+                    </div>
+                    <details className="analysis-details">
+                      <summary>Respuesta original</summary>
+                      <pre>
+                        {JSON.stringify(
+                          {
+                            sentimiento: mensaje.sentimiento,
+                            tema: mensaje.tema,
+                            resumen: mensaje.resumen,
+                            metadata: mensaje.metadata,
+                          },
+                          null,
+                          2,
+                        )}
+                      </pre>
+                    </details>
+                  </article>
+                ))}
+              </div>
+            </motion.section>
+          ) : null}
+
+          {activeTab === "ajustes" ? (
+            <motion.section
+              key="tab-ajustes"
+              className="settings-section state-empty tab-panel"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              Panel de ajustes visual en prototipo.
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
+      </div>
+
+      <footer className="app-footer">
+        <div className="app-footer-inner">
+          <div className="app-footer-brand">
+            <img
+              className="app-footer-logo"
+              src="/logo.png"
+              alt="Logo FeedBean"
+            />
+            <strong>FeedBean</strong>
+          </div>
+          <p className="app-footer-copy">
+            © {new Date().getFullYear()} FeedBean. Todos los derechos
+            reservados.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

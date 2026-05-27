@@ -13,9 +13,15 @@ import { getTopicPalette } from "@utils/chartColors";
 
 type TopicBarChartProps = {
   items: ConteoBucket[];
+  activeValue?: string;
+  onSelect?: (value: string) => void;
 };
 
-export const TopicBarChart = ({ items }: TopicBarChartProps) => {
+export const TopicBarChart = ({
+  items,
+  activeValue,
+  onSelect,
+}: TopicBarChartProps) => {
   const data = [...items]
     .sort((a, b) => {
       if (b.total !== a.total) {
@@ -57,15 +63,31 @@ export const TopicBarChart = ({ items }: TopicBarChartProps) => {
             allowDecimals={false}
           />
           <Tooltip
+            cursor={{ fill: "rgba(125, 86, 45, 0.08)" }}
             formatter={(value) => [`${String(value ?? 0)}`, "Mensajes"]}
           />
-          <Bar dataKey="total" radius={[10, 10, 0, 0]} animationDuration={1000}>
-            {data.map((entry) => (
-              <Cell
-                key={entry.tema}
-                fill={colorByTopic.get(entry.tema) ?? "#7d562d"}
-              />
-            ))}
+          <Bar
+            dataKey="total"
+            radius={[10, 10, 0, 0]}
+            animationDuration={1000}
+            activeBar={false}
+          >
+            {data.map((entry) => {
+              const dimmed = Boolean(activeValue) && activeValue !== entry.tema;
+              return (
+                <Cell
+                  key={entry.tema}
+                  fill={colorByTopic.get(entry.tema) ?? "#7d562d"}
+                  fillOpacity={dimmed ? 0.35 : 1}
+                  stroke="none"
+                  style={{
+                    cursor: onSelect ? "pointer" : "default",
+                    outline: "none",
+                  }}
+                  onClick={() => onSelect?.(entry.tema)}
+                />
+              );
+            })}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
