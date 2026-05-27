@@ -34,6 +34,20 @@ export type MensajesQuery = {
   limit?: number;
 };
 
+export type AggregateQuery = {
+  desde?: number;
+  hasta?: number;
+};
+
+export type PeriodoFiltro =
+  | "all"
+  | "30d"
+  | "15d"
+  | "7d"
+  | "ayer"
+  | "hoy"
+  | "rango";
+
 export type DateRange = {
   desde: string;
   hasta: string;

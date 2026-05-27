@@ -14,7 +14,6 @@ export const useLiveUpdates = (): void => {
       void queryClient.invalidateQueries({ queryKey: ["mensajes"] });
       void queryClient.invalidateQueries({ queryKey: ["sentimientos"] });
       void queryClient.invalidateQueries({ queryKey: ["temas"] });
-      void queryClient.invalidateQueries({ queryKey: ["temas-rango"] });
     };
 
     const onEvent = (eventName: string): void => {

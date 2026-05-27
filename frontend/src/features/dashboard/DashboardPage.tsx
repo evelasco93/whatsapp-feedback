@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FeedItemCard } from "@components/feed/FeedItemCard";
 import { DateRangeControls } from "@components/dashboard/DateRangeControls";
@@ -14,73 +14,174 @@ import {
   useSentimientosQuery,
   useTemasQuery,
 } from "@services/queries";
-import { ConteoBucket, DateRange, Mensaje, Sentimiento } from "@app-types/api";
+import {
+  AggregateQuery,
+  DateRange,
+  PeriodoFiltro,
+  Sentimiento,
+} from "@app-types/api";
 import { toUnixRange } from "@utils/time";
 
-const buildInitialRange = (): DateRange => {
+const VALID_SENTIMIENTOS = ["positivo", "negativo", "neutro"] as const;
+const VALID_PERIODOS: PeriodoFiltro[] = [
+  "all",
+  "30d",
+  "15d",
+  "7d",
+  "ayer",
+  "hoy",
+  "rango",
+];
+
+const toISODate = (value: Date): string => value.toISOString().slice(0, 10);
+
+const buildDefaultCustomRange = (): DateRange => {
   const now = new Date();
   const start = new Date();
   start.setDate(now.getDate() - 6);
 
   return {
-    desde: start.toISOString().slice(0, 10),
-    hasta: now.toISOString().slice(0, 10),
+    desde: toISODate(start),
+    hasta: toISODate(now),
   };
 };
 
-const aggregateTopics = (messages: Mensaje[]): ConteoBucket[] => {
-  const bucket = messages.reduce<Record<string, number>>((acc, item) => {
-    if (item.tema) {
-      acc[item.tema] = (acc[item.tema] ?? 0) + 1;
-    }
-    return acc;
-  }, {});
+const isDateISO = (value: string | null): value is string => {
+  if (!value) {
+    return false;
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+};
 
-  return Object.entries(bucket)
-    .map(([valor, total]) => ({ valor, total }))
-    .sort((a, b) => b.total - a.total);
+const parseSentimiento = (value: string | null): Sentimiento | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  if (VALID_SENTIMIENTOS.includes(value as Sentimiento)) {
+    return value as Sentimiento;
+  }
+  return undefined;
+};
+
+const parsePeriodo = (value: string | null): PeriodoFiltro => {
+  if (!value) {
+    return "all";
+  }
+  if (VALID_PERIODOS.includes(value as PeriodoFiltro)) {
+    return value as PeriodoFiltro;
+  }
+  return "all";
+};
+
+const resolveTimeframeRange = (periodo: PeriodoFiltro, custom: DateRange) => {
+  if (periodo === "all") {
+    return {};
+  }
+
+  const end = new Date();
+  const start = new Date(end);
+
+  if (periodo === "30d") {
+    start.setDate(end.getDate() - 29);
+  } else if (periodo === "15d") {
+    start.setDate(end.getDate() - 14);
+  } else if (periodo === "7d") {
+    start.setDate(end.getDate() - 6);
+  } else if (periodo === "ayer") {
+    start.setDate(end.getDate() - 1);
+    end.setDate(end.getDate() - 1);
+  }
+
+  if (periodo === "rango") {
+    return {
+      desde: toUnixRange(custom.desde, false),
+      hasta: toUnixRange(custom.hasta, true),
+    };
+  }
+
+  return {
+    desde: toUnixRange(toISODate(start), false),
+    hasta: toUnixRange(toISODate(end), true),
+  };
+};
+
+const readInitialFilters = () => {
+  const params = new URLSearchParams(window.location.search);
+  const defaultRange = buildDefaultCustomRange();
+  const periodo = parsePeriodo(params.get("periodo"));
+  const desdeParam = params.get("desde");
+  const hastaParam = params.get("hasta");
+
+  return {
+    sentimiento: parseSentimiento(params.get("sentimiento")),
+    tema: params.get("tema") || undefined,
+    periodo,
+    range:
+      periodo === "rango" && isDateISO(desdeParam) && isDateISO(hastaParam)
+        ? { desde: desdeParam, hasta: hastaParam }
+        : defaultRange,
+  };
 };
 
 export const DashboardPage = () => {
   useLiveUpdates();
 
+  const initialFilters = useMemo(() => readInitialFilters(), []);
+
   const [sentimientoFilter, setSentimientoFilter] = useState<
     Sentimiento | undefined
-  >(undefined);
-  const [temaFilter, setTemaFilter] = useState<string | undefined>(undefined);
-  const [range, setRange] = useState<DateRange>(buildInitialRange);
+  >(initialFilters.sentimiento);
+  const [temaFilter, setTemaFilter] = useState<string | undefined>(
+    initialFilters.tema,
+  );
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>(initialFilters.periodo);
+  const [range, setRange] = useState<DateRange>(initialFilters.range);
+
+  const timeframeQuery = useMemo<AggregateQuery>(() => {
+    return resolveTimeframeRange(periodo, range);
+  }, [periodo, range]);
 
   const mensajesQuery = useMensajesQuery({
     sentimiento: sentimientoFilter,
     tema: temaFilter,
+    ...timeframeQuery,
     limit: 50,
   });
-  const sentimientosQuery = useSentimientosQuery();
-  const temasQuery = useTemasQuery();
-  const mensajesRangoQuery = useMensajesQuery({
-    desde: toUnixRange(range.desde, false),
-    hasta: toUnixRange(range.hasta, true),
-    limit: 200,
-  });
+  const sentimientosQuery = useSentimientosQuery(timeframeQuery);
+  const temasQuery = useTemasQuery(timeframeQuery);
 
-  const temasPorRango = useMemo(() => {
-    if (!mensajesRangoQuery.data?.items?.length) {
-      return temasQuery.data?.items ?? [];
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (sentimientoFilter) {
+      params.set("sentimiento", sentimientoFilter);
     }
-    return aggregateTopics(mensajesRangoQuery.data.items);
-  }, [mensajesRangoQuery.data?.items, temasQuery.data?.items]);
+    if (temaFilter) {
+      params.set("tema", temaFilter);
+    }
+    params.set("periodo", periodo);
+    if (periodo === "rango") {
+      params.set("desde", range.desde);
+      params.set("hasta", range.hasta);
+    }
+
+    const search = params.toString();
+    const nextUrl = `${window.location.pathname}${search ? `?${search}` : ""}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, [periodo, range.desde, range.hasta, sentimientoFilter, temaFilter]);
 
   const hasError =
-    mensajesQuery.isError ||
-    sentimientosQuery.isError ||
-    temasQuery.isError ||
-    mensajesRangoQuery.isError;
+    mensajesQuery.isError || sentimientosQuery.isError || temasQuery.isError;
 
   return (
     <div className="page-shell">
       <header className="hero">
-        <p className="brand">Café de El Salvador</p>
-        <h1>FeedBean</h1>
+        <div className="hero-brand-row">
+          <div>
+            <p className="brand">Café de El Salvador</p>
+            <h1>FeedBean</h1>
+          </div>
+          <img className="hero-logo" src="/logo.png" alt="Logo FeedBean" />
+        </div>
       </header>
 
       {hasError ? (
@@ -107,12 +208,19 @@ export const DashboardPage = () => {
         <ChartCard
           titulo="Frecuencia de temas por rango de fechas"
           descripcion="Selecciona un periodo y revisa los temas mas mencionados."
-          action={<DateRangeControls value={range} onChange={setRange} />}
+          action={
+            <DateRangeControls
+              periodo={periodo}
+              value={range}
+              onPeriodoChange={setPeriodo}
+              onRangeChange={setRange}
+            />
+          }
         >
-          {mensajesRangoQuery.isLoading && !mensajesRangoQuery.data ? (
+          {temasQuery.isLoading && !temasQuery.data ? (
             <div className="state-loading">Cargando temas por rango...</div>
-          ) : temasPorRango.length ? (
-            <TopicBarChart items={temasPorRango} />
+          ) : temasQuery.data?.items.length ? (
+            <TopicBarChart items={temasQuery.data.items} />
           ) : (
             <div className="state-empty">
               No hay temas para el rango seleccionado.

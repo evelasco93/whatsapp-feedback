@@ -53,6 +53,20 @@ h3,
   box-shadow: var(--shadow-soft);
 }
 
+.hero-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.hero-logo {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .brand {
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -62,7 +76,7 @@ h3,
 }
 
 .hero h1 {
-  margin: 0.25rem 0 0.5rem;
+  margin: 0.25rem 0 0;
   font-size: clamp(1.6rem, 3vw, 2.2rem);
 }
 
@@ -260,6 +274,15 @@ h3,
   padding: 0.45rem 0.5rem;
   background: #fff;
   color: var(--text-main);
+}
+
+.date-controls select {
+  border: 1px solid var(--line-soft);
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.5rem;
+  background: #fff;
+  color: var(--text-main);
+  min-width: 170px;
 }
 
 .legend-row {

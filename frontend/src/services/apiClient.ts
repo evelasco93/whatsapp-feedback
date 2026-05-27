@@ -1,4 +1,5 @@
 import {
+  AggregateQuery,
   ConteosResponse,
   MensajesQuery,
   MensajesResponse,
@@ -50,10 +51,16 @@ export const apiClient = {
       limit: query.limit ?? 50,
     });
   },
-  getSentimientos: (): Promise<ConteosResponse> => {
-    return request<ConteosResponse>("/api/sentimientos");
+  getSentimientos: (query?: AggregateQuery): Promise<ConteosResponse> => {
+    return request<ConteosResponse>("/api/sentimientos", {
+      desde: query?.desde,
+      hasta: query?.hasta,
+    });
   },
-  getTemas: (): Promise<ConteosResponse> => {
-    return request<ConteosResponse>("/api/temas");
+  getTemas: (query?: AggregateQuery): Promise<ConteosResponse> => {
+    return request<ConteosResponse>("/api/temas", {
+      desde: query?.desde,
+      hasta: query?.hasta,
+    });
   },
 };

@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { DateRange, MensajesQuery } from "@app-types/api";
+import { AggregateQuery, MensajesQuery } from "@app-types/api";
 import { apiClient } from "@services/apiClient";
 
 const REFRESH_INTERVAL_MS = 15000;
 
 export const queryKeys = {
   mensajes: (query: MensajesQuery) => ["mensajes", query] as const,
-  sentimientos: () => ["sentimientos"] as const,
-  temas: () => ["temas"] as const,
-  temasRango: (range: DateRange) => ["temas-rango", range] as const,
+  sentimientos: (query: AggregateQuery) => ["sentimientos", query] as const,
+  temas: (query: AggregateQuery) => ["temas", query] as const,
 };
 
 export const useMensajesQuery = (query: MensajesQuery) => {
@@ -19,18 +18,18 @@ export const useMensajesQuery = (query: MensajesQuery) => {
   });
 };
 
-export const useSentimientosQuery = () => {
+export const useSentimientosQuery = (query: AggregateQuery) => {
   return useQuery({
-    queryKey: queryKeys.sentimientos(),
-    queryFn: () => apiClient.getSentimientos(),
+    queryKey: queryKeys.sentimientos(query),
+    queryFn: () => apiClient.getSentimientos(query),
     refetchInterval: REFRESH_INTERVAL_MS,
   });
 };
 
-export const useTemasQuery = () => {
+export const useTemasQuery = (query: AggregateQuery) => {
   return useQuery({
-    queryKey: queryKeys.temas(),
-    queryFn: () => apiClient.getTemas(),
+    queryKey: queryKeys.temas(query),
+    queryFn: () => apiClient.getTemas(query),
     refetchInterval: REFRESH_INTERVAL_MS,
   });
 };
