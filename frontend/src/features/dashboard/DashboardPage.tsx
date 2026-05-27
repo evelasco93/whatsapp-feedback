@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ArrowUp, Frown, Meh, Smile } from "lucide-react";
 import { FeedItemCard } from "@components/feed/FeedItemCard";
 import { DateRangeControls } from "@components/dashboard/DateRangeControls";
 import { SentimentPieChart } from "@components/dashboard/SentimentPieChart";
@@ -130,6 +131,9 @@ const toPct = (value: number, total: number) => {
   return Math.round((value / total) * 100);
 };
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
 export const DashboardPage = () => {
   useLiveUpdates();
 
@@ -208,6 +212,57 @@ export const DashboardPage = () => {
     };
   }, [sentimientosQuery.data?.items, temasQuery.data?.items]);
 
+  const sentimentMeter = useMemo(() => {
+    const sentimientoItems = sentimientosQuery.data?.items ?? [];
+    const getSentCount = (key: string) =>
+      sentimientoItems.find((item) => item.valor === key)?.total ?? 0;
+
+    const positivo = getSentCount("positivo");
+    const negativo = getSentCount("negativo");
+    const neutro = getSentCount("neutro");
+    const total = positivo + negativo + neutro;
+
+    if (total <= 0) {
+      return {
+        indicatorPct: 50,
+        mood: "neutro" as const,
+        summary: "Sin datos suficientes",
+      };
+    }
+
+    const score = (positivo - negativo) / total;
+    const indicatorPct = Math.round(((score + 1) / 2) * 100);
+
+    if (indicatorPct < 40) {
+      return {
+        indicatorPct,
+        mood: "negativo" as const,
+        summary: "Predomina sentimiento negativo",
+      };
+    }
+
+    if (indicatorPct <= 60) {
+      return {
+        indicatorPct,
+        mood: "neutro" as const,
+        summary: "Sentimiento balanceado",
+      };
+    }
+
+    return {
+      indicatorPct,
+      mood: "positivo" as const,
+      summary: "Predomina sentimiento positivo",
+    };
+  }, [sentimientosQuery.data?.items]);
+
+  const MoodIcon =
+    sentimentMeter.mood === "negativo"
+      ? Frown
+      : sentimentMeter.mood === "neutro"
+        ? Meh
+        : Smile;
+
   return (
     <div className="page-shell">
       <header className="hero">
@@ -226,6 +281,36 @@ export const DashboardPage = () => {
           ejecucion.
         </div>
       ) : null}
+
+      <section className="sentiment-meter" aria-label="Pulso de sentimiento">
+        <div className="sentiment-meter-head">
+          <h2>Pulso de sentimiento</h2>
+        </div>
+        <div className="sentiment-meter-visual" role="presentation">
+          <div
+            className={`sentiment-meter-face-icon mood-${sentimentMeter.mood}`}
+            aria-hidden
+          >
+            <MoodIcon size={64} strokeWidth={2.2} />
+          </div>
+          <div
+            className="sentiment-meter-track"
+            aria-label={`Indicador de sentimiento en ${sentimentMeter.indicatorPct}%`}
+          />
+          <div
+            className={`sentiment-meter-arrow mood-${sentimentMeter.mood}`}
+            style={{ left: `${clamp(sentimentMeter.indicatorPct, 2, 98)}%` }}
+            aria-hidden
+          >
+            <ArrowUp size={20} strokeWidth={2.4} />
+          </div>
+        </div>
+        <div className="sentiment-meter-scale" aria-hidden>
+          <span>Negativo</span>
+          <span>Neutro</span>
+          <span>Positivo</span>
+        </div>
+      </section>
 
       <section className="dashboard-grid">
         <ChartCard

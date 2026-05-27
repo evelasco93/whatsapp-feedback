@@ -34,6 +34,14 @@ body {
     radial-gradient(circle at 100% 8%, #efe5da 0%, transparent 38%),
     var(--bg-main);
   color: var(--text-main);
+  caret-color: transparent;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  caret-color: auto;
 }
 
 h1,
@@ -96,6 +104,119 @@ h3,
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 1rem;
   align-items: stretch;
+}
+
+.sentiment-meter {
+  border: 1px solid rgba(211, 195, 189, 0.65);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-soft);
+  padding: 0.95rem 1rem 0.85rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sentiment-meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.sentiment-meter-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.sentiment-meter-head p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+}
+
+.sentiment-meter-visual {
+  position: relative;
+  margin-top: 0.65rem;
+  padding-top: 3.4rem;
+  padding-bottom: 1.5rem;
+}
+
+.sentiment-meter-track {
+  position: relative;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--sentiment-negative) 0%,
+    color-mix(
+        in srgb,
+        var(--sentiment-negative) 70%,
+        var(--sentiment-neutral) 30%
+      )
+      24%,
+    var(--sentiment-neutral) 50%,
+    color-mix(
+        in srgb,
+        var(--sentiment-neutral) 30%,
+        var(--sentiment-positive) 70%
+      )
+      76%,
+    var(--sentiment-positive) 100%
+  );
+}
+
+.sentiment-meter-face-icon,
+.sentiment-meter-arrow {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: color 180ms ease;
+}
+
+.sentiment-meter-face-icon {
+  top: -0.35rem;
+  line-height: 0;
+}
+
+.sentiment-meter-arrow {
+  bottom: 0;
+  line-height: 0;
+  transition:
+    left 220ms ease,
+    color 180ms ease;
+}
+
+.sentiment-meter-face-icon.mood-negativo,
+.sentiment-meter-arrow.mood-negativo {
+  color: var(--sentiment-negative);
+}
+
+.sentiment-meter-face-icon.mood-neutro,
+.sentiment-meter-arrow.mood-neutro {
+  color: var(--sentiment-neutral);
+}
+
+.sentiment-meter-face-icon.mood-positivo,
+.sentiment-meter-arrow.mood-positivo {
+  color: var(--sentiment-positive);
+}
+
+.sentiment-meter-scale {
+  margin-top: 0.7rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  font-size: 0.75rem;
+  color: #5f5752;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sentiment-meter-scale span:nth-child(2) {
+  text-align: center;
+}
+
+.sentiment-meter-scale span:nth-child(3) {
+  text-align: right;
 }
 
 .dashboard-grid > * {
@@ -173,6 +294,7 @@ h3,
 .section-header p {
   margin: 0.25rem 0 0;
   color: var(--text-soft);
+  user-select: none;
 }
 
 .feed-section {
