@@ -92,7 +92,6 @@ cd frontend
 2. Instalar dependencias:
 
 ```bash
-corepack enable
 pnpm install
 ```
 
